@@ -1,0 +1,41 @@
+[tool.poetry]
+name = "autoscraper"
+version = "0.1.0"
+description = "AI multi-agent system for generating Python Scrapy scrapers"
+authors = ["Jean Collette"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+scrapy-zyte-api = "^0.25.1"
+selenium = "^4.27.1"
+openai = "^1.57.4"
+pydantic = "^2.10.3"
+loguru = "^0.7.3"
+python-dotenv = "^1.0.1"
+webdriver-manager = "^4.0.2"
+scrapy = "^2.12.0"
+unidiff = "^0.7.5"
+tiktoken = "^0.8.0"
+jsonref = "^1.1.0"
+chompjs = "^1.3.0"
+undetected-chromedriver = "^3.5.5"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["E", "F", "I", "N", "W", "B", "UP", "PL", "RUF"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
