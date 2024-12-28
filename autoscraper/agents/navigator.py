@@ -1,6 +1,7 @@
 """Navigator agent for website analysis using Selenium and LLM."""
 import time
 from urllib.parse import urljoin
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from loguru import logger
 
@@ -22,6 +23,12 @@ class NavigatorAgent:
         self.driver = ChromeDriver()
         self.html_parser = HTMLParser()
         self.base_url = base_url
+        
+        # Initialize Jinja2 template environment
+        self.template_env = Environment(
+            loader=FileSystemLoader("autoscraper/prompts/templates"),
+            autoescape=select_autoescape()
+        )
 
     def _analyze_page(self, url: str, driver, all_page_analyses: list[PageAnalysis]) -> PageAnalysis:
         """Analyze a webpage to identify its structure and data elements.
@@ -76,36 +83,27 @@ class NavigatorAgent:
         logger.info("Analyzing page with LLM")
         # Get model configuration
 
-        # Prepare context for the LLM
-        context = {
-            "task": "Analyze website structure for scraping",
-            "information_extracted_from_previous_requests": [page.model_dump() for page in all_page_analyses],
-            "page_source": page_source,
-            "network_requests": network_requests,
-            "json_data": json_data,
-            "instructions": [
-                "Determine the best method for data extraction (HTML selectors, JSON parsing, API calls)",
-                "Identify main content areas and their selectors",
-                "Find specific data elements using appropriate patterns (CSS selectors, JSON paths, API endpoints)",
-                "Provide sample values for each data element",
-                "Identify pagination methods and provide details",
-                "Analyze API endpoints in network requests and their structure",
-                "Determine if JavaScript is required and if content is dynamic",
-                "Identify links to follow for further analysis if needed",
-                "Provide any additional remarks or challenges observed",
-            ],
-        }
+        # Render context from template
+        template = self.template_env.get_template("navigator_context.jinja2")
+        context = template.render(
+            previous_requests=[page.model_dump() for page in all_page_analyses],
+            page_source=page_source,
+            network_requests=network_requests,
+            json_data=json_data
+        )
 
         # Log the context for debugging
         logger.debug("Analysis context:")
         logger.debug(f"Page source length: {len(page_source)}")
         logger.debug(f"Found {len(network_requests)} network requests")
 
+        # Render system prompt from template
+        template = self.template_env.get_template("page_analysis.jinja2")
+        system_prompt = template.render()
+        
         page_analysis = self.openrouter.get_completion(
             model_role="navigator",
-            system_prompt="""You are an expert at analyzing websites for scraping with Scrapy.
-Analyze the provided website structure and determine the best method for data extraction.
-Provide detailed information about HTML elements, JSON structures, and API endpoints as needed.""",
+            system_prompt=system_prompt,
             user_content=context,
             response_model=PageAnalysis,
         )
@@ -155,10 +153,13 @@ Provide detailed information about HTML elements, JSON structures, and API endpo
             ],
         }
 
+        # Render system prompt from template
+        template = self.template_env.get_template("website_analysis.jinja2")
+        system_prompt = template.render()
+        
         synthesized_analysis = self.openrouter.get_completion(
             model_role="summarizer",
-            system_prompt="""You are an expert at synthesizing website analyses to create efficient Scrapy spiders.
-Analyze the provided page analyses and create a comprehensive website analysis for spider creation.""",
+            system_prompt=system_prompt,
             user_content=context,
             response_model=WebsiteAnalysis,
         )

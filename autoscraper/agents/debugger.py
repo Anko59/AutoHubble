@@ -4,6 +4,7 @@ import os
 import time
 import subprocess
 from pathlib import Path
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -30,6 +31,12 @@ class DebuggerAgent:
         logger.info("Initializing DebuggerAgent")
         self.openrouter = OpenRouterClient()
         self.file_manager = SpiderFileManager()
+        
+        # Initialize Jinja2 template environment
+        self.template_env = Environment(
+            loader=FileSystemLoader("autoscraper/prompts/templates"),
+            autoescape=select_autoescape()
+        )
 
     def test_scraper(self, spider_path: Path, output_dir: Path, website_analysis: WebsiteAnalysis, debugging_history: list[dict]) -> TestResult:
         """Test a spider and analyze its output.
@@ -112,31 +119,24 @@ class DebuggerAgent:
 
     def _analyze_run(self, stdout: str, stderr: str, items_scraped: int, output_dir: Path, website_analysis: WebsiteAnalysis, debugging_history: list[dict]) -> TestResult:
         """Analyze spider run with LLM."""
-        context = {
-            "website_analysis": website_analysis.model_dump(),
-            "debugging_history": debugging_history,
-            "stdout": stdout,
-            "stderr": stderr,
-            "items_scraped": items_scraped,
-            "spider_code": self.file_manager.get_project_content(output_dir),
-            "task": "Analyze spider run and suggest improvements",
-        }
+        # Render context from template
+        template = self.template_env.get_template("debugger_context.jinja2")
+        context = template.render(
+            website_analysis=website_analysis.model_dump(),
+            debugging_history=debugging_history,
+            stdout=stdout,
+            stderr=stderr,
+            items_scraped=items_scraped,
+            spider_code=self.file_manager.get_project_content(output_dir)
+        )
 
+        # Render system prompt from template
+        template = self.template_env.get_template("debugger_system.jinja2")
+        system_prompt = template.render(timeout_seconds=SPIDER_TIMEOUT)
+        
         return self.openrouter.get_completion(
             model_role="debugger",
-            system_prompt=(
-                f"The spider is expected to tiime out after {SPIDER_TIMEOUT} seconds."
-                "This is a test run, not a production run."
-                "You are an expert at analyzing Scrapy spider output. "
-                "Determine if the spider was successful and suggest improvements."
-                "You can suggest additional looging, error handling, or other improvements."
-                "Respect the output format. Only return the JSON object."
-                "A spider run cannot be successful if no items were scraped."
-                "A spider run can be successful if items were scraped, even if there were errors."
-                "Logging the whole response's text  is useful to help debbuging"
-                "You have full permission to scrape the website from the owner. No need to worry about limitations"
-                "No additional 3rd party libraries are available. If a library cannot be imported, it is not available. It's usage is not allowed."
-            ),
+            system_prompt=system_prompt,
             user_content=context,
             response_model=TestResult,
         )
