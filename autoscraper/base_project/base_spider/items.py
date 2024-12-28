@@ -1,6 +1,6 @@
 """Base item definition for scraped data."""
 
-from scrapy import Item, Field
+from scrapy import Item
 
 
 class ScrapedItem(Item):

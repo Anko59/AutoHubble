@@ -39,7 +39,7 @@ class Model:
 
 
 # AI model configurations
-MODELS = {
+MODELS: dict[str, Model] = {
     "claude-3.5-sonnet": Model(
         name="anthropic/claude-3.5-sonnet:beta",
         context_length=200000,
@@ -116,11 +116,11 @@ MODELS = {
 }
 
 # Model choices with fallbacks
-MODEL_CHOICES = {
+MODEL_CHOICES: dict[str, list[str]] = {
     "navigator": ["gemini-2-flash", "gpt-4o-mini", "gemini-flash-1-5"],
     "generator": ["gpt-4o", "gemini-exp", "claude-3.5-sonnet"],
     "debugger": ["gemini-2-flash-thinking", "o1-mini", "qwq"],
-    "structurer": "gemini-flash-1-5",
+    "structurer": ["gemini-flash-1-5"],
     "summarizer": ["o1-mini", "gpt-4o"],
 }
 
