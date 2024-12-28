@@ -1,0 +1,8 @@
+{
+    "website_structure": {{ website_structure | tojson }},
+    "current_project_code": "{{ current_project_code }}",
+    "target_fields": {{ target_fields | tojson }},
+    "spider_name": "{{ spider_name }}",
+    "previous_actions": {{ previous_actions | tojson }},
+    "debug_feedback": {{ debug_feedback | tojson if debug_feedback else 'null' }}
+}

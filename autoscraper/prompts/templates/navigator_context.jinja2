@@ -1,0 +1,18 @@
+{
+    "task": "Analyze website structure for scraping",
+    "information_extracted_from_previous_requests": {{ previous_requests | tojson }},
+    "page_source": "{{ page_source }}",
+    "network_requests": {{ network_requests | tojson }},
+    "json_data": {{ json_data | tojson }},
+    "instructions": [
+        "Determine the best method for data extraction (HTML selectors, JSON parsing, API calls)",
+        "Identify main content areas and their selectors",
+        "Find specific data elements using appropriate patterns (CSS selectors, JSON paths, API endpoints)",
+        "Provide sample values for each data element",
+        "Identify pagination methods and provide details",
+        "Analyze API endpoints in network requests and their structure",
+        "Determine if JavaScript is required and if content is dynamic",
+        "Identify links to follow for further analysis if needed",
+        "Provide any additional remarks or challenges observed"
+    ]
+}

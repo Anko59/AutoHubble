@@ -1,6 +1,7 @@
 """Generator agent for creating Scrapy spiders."""
 
 from pathlib import Path
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from loguru import logger
 
@@ -20,6 +21,12 @@ class GeneratorAgent:
         logger.info("Initializing GeneratorAgent")
         self.openrouter = OpenRouterClient()
         self.file_manager = SpiderFileManager()
+        
+        # Initialize Jinja2 template environment
+        self.template_env = Environment(
+            loader=FileSystemLoader("autoscraper/prompts/templates"),
+            autoescape=select_autoescape()
+        )
 
     def generate_spider(
         self,
@@ -73,37 +80,35 @@ class GeneratorAgent:
     ) -> GeneratorAction:
         logger.info("Starting spider generation")
 
-        # Prepare context for code generation
-        context = {
-            "website_structure": website_structure.model_dump(),
-            "current_project_code": self.file_manager.get_project_content(output_dir),
-            "target_fields": target_fields,
-            "spider_name": spider_name,
-            "previous_actions": [action.model_dump() for action in previous_actions],
-            "requirements": [
-                "Must use scrapy.Spider as base class",
-                "Must implement parse method",
-                "Must handle pagination if available",
-                "Must use loguru for logging",
-                "ONLY FILL THE DEMANDED JSON",
-                "DO NOT PROVIDE ANY ADDITIONAL TEXT, respond in JSON format",
-                "Otherwise the parsing will fail and this will be all for nothing"
-            ],
-        }
+        # Render context from template
+        template = self.template_env.get_template("generator_user_context.jinja2")
+        context = template.render(
+            website_structure=website_structure.model_dump(),
+            current_project_code=self.file_manager.get_project_content(output_dir),
+            target_fields=target_fields,
+            spider_name=spider_name,
+            previous_actions=[action.model_dump() for action in previous_actions],
+            debug_feedback=debug_result.model_dump() if debug_result else None
+        )
+        
+        # Render requirements from template
+        template = self.template_env.get_template("generator_context.jinja2")
+        requirements = template.render().splitlines()
+        context = {**context, "requirements": requirements}
 
         # Add debug feedback if available
         if debug_result:
             context["debug_feedback"] = debug_result.model_dump()
             logger.info("Including debug feedback in generation context")
 
+        # Render system prompt from template
+        template = self.template_env.get_template("generator_system.jinja2")
+        system_prompt = template.render()
+        
         # Generate spider code
         action = self.openrouter.get_completion(
             model_role="generator",
-            system_prompt=(
-                "You are an expert at generating Scrapy spiders. "
-                "Generate a spider that extracts data from the website using "
-                "the most appropriate method based on the website structure analysis."
-            ),
+            system_prompt=system_prompt,
             user_content=context,
             response_model=GeneratorAction,
         )
