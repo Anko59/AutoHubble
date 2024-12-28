@@ -11,7 +11,7 @@ class BaseSpider(Spider):
     """Base spider class for generated scrapers."""
 
     name = "base_spider"
-    start_urls = []
+    start_urls: list[str] = []
 
     def start_requests(self) -> Generator[Request, None, None]:
         """Generate initial requests.

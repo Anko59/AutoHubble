@@ -78,7 +78,6 @@ base_attribute_whitelist = {
     "title",
     "type",
     "value",
-    
     # Less relevant attributes for scraping:
     # "accept-charset",
     # "autocomplete",
@@ -152,9 +151,7 @@ class HTMLParser:
         :param attribute_whitelist: Set of attributes to retain in the tags (default: essential attributes for scraping).
         """
         self.relevant_tags: set[str] = relevant_tags or base_relevant_tags
-        self.attribute_whitelist: set[str] = (
-            attribute_whitelist or base_attribute_whitelist
-        )
+        self.attribute_whitelist: set[str] = attribute_whitelist or base_attribute_whitelist
 
     def _remove_irrelevant_tags(self, soup: BeautifulSoup) -> None:
         """
@@ -169,12 +166,10 @@ class HTMLParser:
         Remove attributes not in the whitelist from all tags.
         """
         for tag in soup.find_all(True):
-            attrs = {
-                k: v for k, v in tag.attrs.items() if k in self.attribute_whitelist
-            }
+            attrs = {k: v for k, v in tag.attrs.items() if k in self.attribute_whitelist}
             tag.attrs = attrs
 
-    def _extract_json_from_scripts(self, soup: BeautifulSoup) ->list[dict[str, str]]:
+    def _extract_json_from_scripts(self, soup: BeautifulSoup) -> list[dict[str, str]]:
         """
         Extract JSON objects from <script> tags and remove the <script> tags.
         """
@@ -187,13 +182,11 @@ class HTMLParser:
                     extracted_data = json.dumps(extracted_data)
                     if len(extracted_data) > MAX_JSON_LENGHT:
                         extracted_data = (
-                            extracted_data[: MAX_JSON_LENGHT / 2]
-                            + "...TRUNCATED..."
-                            + extracted_data[-MAX_JSON_LENGHT / 2 :]
+                            extracted_data[: int(MAX_JSON_LENGHT / 2)] + "...TRUNCATED..." + extracted_data[int(-MAX_JSON_LENGHT / 2) :]
                         )
-                    json_data.append({"script_index": script_index, "data": extracted_data})
-                except Exception:
-                    pass  # Skip if not valid JSON or extractable data
+                    json_data.append({"script_index": str(script_index), "data": extracted_data})
+                except Exception as e:
+                    logger.debug(f"Failed to extract JSON from script: {str(e)[0:100]}")
             script.extract()  # Remove all <script> tags
         return json_data
 

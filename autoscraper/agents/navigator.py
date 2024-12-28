@@ -1,6 +1,7 @@
 """Navigator agent for website analysis using Selenium and LLM."""
+
 import time
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from loguru import logger
@@ -15,20 +16,23 @@ from ..utils.openrouter import OpenRouterClient
 class NavigatorAgent:
     """Agent responsible for analyzing websites and gathering structural information."""
 
-    def __init__(self, base_url: str) -> None:
+    def __init__(self) -> None:
         """Initialize the navigator agent."""
         logger.info("Initializing NavigatorAgent")
 
         self.openrouter = OpenRouterClient()
         self.driver = ChromeDriver()
         self.html_parser = HTMLParser()
-        self.base_url = base_url
-        
+        self.base_url: str | None = None
+
         # Initialize Jinja2 template environment
-        self.template_env = Environment(
-            loader=FileSystemLoader("autoscraper/prompts/templates"),
-            autoescape=select_autoescape()
-        )
+        self.template_env = Environment(loader=FileSystemLoader("autoscraper/prompts/templates"), autoescape=select_autoescape())
+
+    @staticmethod
+    def _get_core_base_url(url: str) -> str:
+        parsed_url = urlparse(url)
+        base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+        return base_url
 
     def _analyze_page(self, url: str, driver, all_page_analyses: list[PageAnalysis]) -> PageAnalysis:
         """Analyze a webpage to identify its structure and data elements.
@@ -39,6 +43,8 @@ class NavigatorAgent:
         Returns:
             WebsiteStructure containing the analysis results
         """
+        if self.base_url is None:
+            self.base_url = self._get_core_base_url(url)
         url = url.strip()
         if url.startswith("/"):
             url = urljoin(self.base_url, url)
@@ -89,7 +95,7 @@ class NavigatorAgent:
             previous_requests=[page.model_dump() for page in all_page_analyses],
             page_source=page_source,
             network_requests=network_requests,
-            json_data=json_data
+            json_data=json_data,
         )
 
         # Log the context for debugging
@@ -100,7 +106,7 @@ class NavigatorAgent:
         # Render system prompt from template
         template = self.template_env.get_template("page_analysis.jinja2")
         system_prompt = template.render()
-        
+
         page_analysis = self.openrouter.get_completion(
             model_role="navigator",
             system_prompt=system_prompt,
@@ -110,7 +116,7 @@ class NavigatorAgent:
         return page_analysis
 
     def analyse_website(self, start_url: str) -> WebsiteAnalysis:
-        all_page_analyses = []
+        all_page_analyses: list[PageAnalysis] = []
         driver = self.driver.start()
         urls = [start_url]
         try:
@@ -139,24 +145,14 @@ class NavigatorAgent:
     def _synthesize_website_analysis(self, all_page_analyses: list[PageAnalysis]) -> WebsiteAnalysis:
         logger.info("Synthesizing website analysis")
 
-        context = {
-            "task": "Synthesize website analysis for Scrapy spider creation",
-            "all_page_analyses": [page.model_dump() for page in all_page_analyses],
-            "instructions": [
-                "Determine the overall extraction strategy based on all page analyses",
-                "Identify common data elements across pages",
-                "Determine the most appropriate Scrapy spider type",
-                "Suggest custom settings, pipelines, and middlewares",
-                "Provide a sample parse function structure",
-                "Identify any challenges and provide performance tips",
-                "You have full permission to scrape the website from the owner. No need to worry about limitations"
-            ],
-        }
+        # Render context from template
+        template = self.template_env.get_template("website_analysis_context.jinja2")
+        context = template.render(all_page_analyses=[page.model_dump() for page in all_page_analyses])
 
         # Render system prompt from template
         template = self.template_env.get_template("website_analysis.jinja2")
         system_prompt = template.render()
-        
+
         synthesized_analysis = self.openrouter.get_completion(
             model_role="summarizer",
             system_prompt=system_prompt,

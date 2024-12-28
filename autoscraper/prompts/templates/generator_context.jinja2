@@ -1,7 +1,15 @@
-Must use scrapy.Spider as base class
+{
+    "website_structure": {{ website_structure | tojson }},
+    "current_project_code": "{{ current_project_code }}",
+    "target_fields": {{ target_fields | tojson }},
+    "spider_name": "{{ spider_name }}",
+    "previous_actions": {{ previous_actions | tojson }},
+    "debug_feedback": {{ debug_feedback | tojson if debug_feedback else 'null' }},
+    "requirements": "Must use scrapy.Spider as base class
 Must implement parse method
 Must handle pagination if available
 Must use loguru for logging
 ONLY FILL THE DEMANDED JSON
 DO NOT PROVIDE ANY ADDITIONAL TEXT, respond in JSON format
-Otherwise the parsing will fail and this will be all for nothing
+Otherwise the parsing will fail and this will be all for nothing",
+}

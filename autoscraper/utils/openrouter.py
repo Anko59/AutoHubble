@@ -75,7 +75,7 @@ class OpenRouterClient:
     def _truncate_content(self, content_str: str, system_prompt: str, max_tokens: int) -> str:
         # Reserve 20% for system prompt and response
         available_tokens = int(max_tokens * 0.8)
-        system_tokens = len(self.encoding.encode(system_prompt))
+        system_tokens = len(self.encoding.encode(system_prompt))  # noqa: F841
         content_tokens = len(self.encoding.encode(content_str))
 
         if content_tokens > available_tokens:
@@ -95,7 +95,7 @@ class OpenRouterClient:
             chunks = re.split(r"(\n{2,}|\. )", middle)
 
             # Randomly select chunks to keep
-            total_chars = sum(len(chunk) for chunk in chunks)
+            total_chars = sum(len(chunk) for chunk in chunks)  # noqa: F841
             keep_middle_chars = keep_chars - 2 * keep_end
 
             selected_chunks = []
@@ -187,7 +187,7 @@ class OpenRouterClient:
 
     def structure_response(self, unstructured_response: str, response_model: type[T]) -> T:
         """Structure the unstructured response using the structurer model."""
-        structurer_model = MODELS[MODEL_CHOICES["structurer"]]
+        structurer_model = MODELS[MODEL_CHOICES["structurer"][0]]
         system_prompt = f"Structure the following response according to this schema: {response_model.model_json_schema()}"
 
         extra_body = self._get_extra_body(structurer_model)

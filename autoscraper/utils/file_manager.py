@@ -49,9 +49,7 @@ def apply_diff(file_path, diff_string: str):
 class SpiderFileManager:
     """Manages file operations for spider projects."""
 
-    def setup_project(
-        self, base_path: Path, output_path: Path, spider_name: str
-    ) -> Path:
+    def setup_project(self, base_path: Path, output_path: Path, spider_name: str) -> Path:
         """Set up a new spider project by copying base files.
 
         Args:
@@ -120,9 +118,7 @@ class SpiderFileManager:
         (log_dir / "stderr.log").write_text(stderr)
         logger.debug(f"Logs saved to {log_dir}")
 
-    def _handle_create_action(
-        self, output_dir: Path, action: GeneratorAction
-    ) -> ActionExecutionFeedBack:
+    def _handle_create_action(self, output_dir: Path, action: GeneratorAction) -> ActionExecutionFeedBack:
         """Handle create action."""
         file_path = output_dir / action.file
 
@@ -141,9 +137,7 @@ class SpiderFileManager:
             message=f"Created file {file_path}",
         )
 
-    def _handle_edit_action(
-        self, output_dir: Path, action: GeneratorAction
-    ) -> ActionExecutionFeedBack:
+    def _handle_edit_action(self, output_dir: Path, action: GeneratorAction) -> ActionExecutionFeedBack:
         """Handle edit action."""
         file_path = output_dir / action.file
 
@@ -166,9 +160,7 @@ class SpiderFileManager:
             message=f"Edited file {file_path}",
         )
 
-    def _handle_delete_action(
-        self, output_dir: Path, action: GeneratorAction
-    ) -> ActionExecutionFeedBack:
+    def _handle_delete_action(self, output_dir: Path, action: GeneratorAction) -> ActionExecutionFeedBack:
         """Handle delete action."""
         file_path = output_dir / action.file
         if not file_path.exists():
@@ -185,9 +177,7 @@ class SpiderFileManager:
             message=f"Deleted file {file_path}",
         )
 
-    def _handle_overwrite_action(
-        self, output_dir: Path, action: GeneratorAction
-    ) -> ActionExecutionFeedBack:
+    def _handle_overwrite_action(self, output_dir: Path, action: GeneratorAction) -> ActionExecutionFeedBack:
         """Handle overwrite action."""
         file_path = output_dir / action.file
         if not file_path.exists():
@@ -203,9 +193,7 @@ class SpiderFileManager:
             message=f"Overwritten file {file_path}",
         )
 
-    def _handle_append_action(
-        self, output_dir: Path, action: GeneratorAction
-    ) -> ActionExecutionFeedBack:
+    def _handle_append_action(self, output_dir: Path, action: GeneratorAction) -> ActionExecutionFeedBack:
         """Handle append action."""
         file_path = output_dir / action.file
         if not file_path.exists():
@@ -222,9 +210,7 @@ class SpiderFileManager:
             message=f"Appended to file {file_path}",
         )
 
-    def implement_action(
-        self, output_dir: Path, action: GeneratorAction
-    ) -> list[ActionExecutionFeedBack]:
+    def implement_action(self, output_dir: Path, action: GeneratorAction) -> list[ActionExecutionFeedBack]:
         """Implement a generator action."""
         feedbacks = []
         for file_action in action.actions:

@@ -1,0 +1,19 @@
+Task: Synthesize website analysis for Scrapy spider creation
+
+All Page Analyses:
+{% for page in all_page_analyses %}
+Page Analysis for {{ page.url }}:
+{{ page | tojson(indent=2) }}
+
+{% endfor %}
+
+Instructions:
+1. Determine the overall extraction strategy based on all page analyses
+2. Identify common data elements across pages
+3. Determine the most appropriate Scrapy spider type
+4. Suggest custom settings, pipelines, and middlewares
+5. Provide a sample parse function structure
+6. Identify any challenges and provide performance tips
+7. You have full permission to scrape the website from the owner. No need to worry about limitations
+
+Please provide a comprehensive website analysis based on the above information.
