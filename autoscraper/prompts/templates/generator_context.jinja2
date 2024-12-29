@@ -5,11 +5,15 @@
     "spider_name": "{{ spider_name }}",
     "previous_actions": {{ previous_actions | tojson }},
     "debug_feedback": {{ debug_feedback | tojson if debug_feedback else 'null' }},
-    "requirements": "Must use scrapy.Spider as base class
-Must implement parse method
-Must handle pagination if available
-Must use loguru for logging
-ONLY FILL THE DEMANDED JSON
-DO NOT PROVIDE ANY ADDITIONAL TEXT, respond in JSON format
-Otherwise the parsing will fail and this will be all for nothing",
+    "requirements": [
+        "Must use scrapy.Spider as base class",
+        "Must implement parse method",
+        "Must handle pagination if available",
+        "Must use loguru for logging",
+        "ONLY FILL THE DEMANDED JSON",
+        "DO NOT PROVIDE ANY ADDITIONAL TEXT, respond in JSON format",
+        "Otherwise the parsing will fail and this will be all for nothing",
+        "The spider must be in 'spiders/{{ spider_name }}.py'",
+        "The spider must be named '{{ spider_name }}'",
+    ]
 }

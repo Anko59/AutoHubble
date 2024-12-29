@@ -23,7 +23,7 @@ class AutoScraper:
         logger.add("output/autoscraper.log", rotation="500 MB")
         self.navigator = NavigatorAgent()
         self.generator = GeneratorAgent()
-        self.debugger = DebuggerAgent()
+        self.debugger = DebuggerAgent(self.navigator)
         self.spider_runner = SpiderRunner()
         self.target_fields = None
         self.base_url = None

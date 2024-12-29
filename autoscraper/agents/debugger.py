@@ -5,31 +5,25 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from loguru import logger
-from pydantic import BaseModel, Field
 
+from ..agents.navigator import NavigatorAgent
+from ..config import SPIDER_TIMEOUT, MAX_DEBUGGER_LOOPS
+from ..models import TestResult, PageAnalysis, WebsiteAnalysis
 from ..utils.file_manager import SpiderFileManager
 from ..utils.openrouter import OpenRouterClient
 from ..utils.spider_runner import SpiderRunner
-from ..config import SPIDER_TIMEOUT
-from ..models import WebsiteAnalysis
-
-
-class TestResult(BaseModel):
-    """Result of spider test run with recommendations."""
-
-    success: bool = Field(description="Whether the test was successful")
-    items_scraped: int = Field(description="Number of items scraped")
-    recommendations: str = Field(description="Recommendations for improving the spider")
 
 
 class DebuggerAgent:
     """Agent responsible for testing spiders and providing feedback."""
 
-    def __init__(self) -> None:
+    def __init__(self, navigator: NavigatorAgent) -> None:
         """Initialize the debugger agent."""
         logger.info("Initializing DebuggerAgent")
         self.openrouter = OpenRouterClient()
         self.file_manager = SpiderFileManager()
+        self.spider_runner = SpiderRunner()
+        self.navigator = navigator
 
         # Initialize Jinja2 template environment
         self.template_env = Environment(loader=FileSystemLoader("autoscraper/prompts/templates"), autoescape=select_autoescape())
@@ -48,11 +42,10 @@ class DebuggerAgent:
         logger.info(f"Testing spider: {spider_path}")
 
         # Run the spider using spider runner
-        spider_runner = SpiderRunner()
         start_time = time.time()
 
         try:
-            success, stdout, stderr, items_scraped = spider_runner.run_spider(spider_path, output_dir, timeout=SPIDER_TIMEOUT)
+            success, stdout, stderr, items_scraped = self.spider_runner.run_spider(spider_path, output_dir, timeout=SPIDER_TIMEOUT)
 
             execution_time = time.time() - start_time
 
@@ -73,11 +66,24 @@ class DebuggerAgent:
         # Analyze with LLM
         result = self._analyze_run(stdout, stderr, items_scraped, output_dir, website_analysis, debugging_history)
 
+        # If the result suggests we need more information, gather it
+        for _ in range(MAX_DEBUGGER_LOOPS):
+            if not result.needs_more_info:
+                break
+            additional_info = self._gather_additional_info(result.url_to_analyze, result.analysis_instructions)
+            if not additional_info:
+                break
+            result = self._analyze_run(stdout, stderr, items_scraped, output_dir, website_analysis, debugging_history, additional_info)
+
         if items_scraped == 0:
             result.success = False
             result.recommendations = "No items were scraped. " + result.recommendations
 
         return result
+
+    def _gather_additional_info(self, url: str, instructions: str) -> PageAnalysis | None:
+        """Gather additional information using the NavigatorAgent."""
+        return self.navigator.analyze_specific_page(url, instructions)
 
     def _analyze_run(
         self,
@@ -87,6 +93,7 @@ class DebuggerAgent:
         output_dir: Path,
         website_analysis: WebsiteAnalysis,
         debugging_history: list[dict],
+        additional_info: PageAnalysis | None = None,
     ) -> TestResult:
         """Analyze spider run with LLM."""
         # Render context from template
@@ -98,6 +105,7 @@ class DebuggerAgent:
             stderr=stderr,
             items_scraped=items_scraped,
             spider_code=self.file_manager.get_project_content(output_dir),
+            additional_info=additional_info.model_dump() if additional_info else None,
         )
 
         # Render system prompt from template

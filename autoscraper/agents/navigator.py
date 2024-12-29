@@ -1,5 +1,6 @@
 """Navigator agent for website analysis using Selenium and LLM."""
 
+from copy import copy
 import time
 from urllib.parse import urljoin, urlparse
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -7,7 +8,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from loguru import logger
 
 from ..config import MAX_DEPTH, MAX_LINKS
-from ..models import PageAnalysis, WebsiteAnalysis
+from ..models import PageAnalysis, WebsiteAnalysis, Token
 from ..utils.chrome_driver import ChromeDriver
 from ..utils.html_parser import HTMLParser
 from ..utils.openrouter import OpenRouterClient
@@ -34,37 +35,70 @@ class NavigatorAgent:
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         return base_url
 
-    def _analyze_page(self, url: str, driver, all_page_analyses: list[PageAnalysis]) -> PageAnalysis:
-        """Analyze a webpage to identify its structure and data elements.
+    def _extract_tokens_from_driver(self, driver, page_source: str) -> list[Token]:
+        """Extract potential authorization tokens from the page."""
+        tokens = []
 
-        Args:
-            url: The URL to analyze
+        # Check for tokens in local storage
+        local_storage = driver.execute_script("return Object.entries(localStorage);")
+        for key, value in local_storage:
+            if any(keyword in key.lower() for keyword in ["token", "auth", "api", "key"]):
+                tokens.append(Token(token=key, value=value, expires_at="unknown", selector="localStorage", token_type="localStorage"))
 
-        Returns:
-            WebsiteStructure containing the analysis results
-        """
+        # Check for tokens in cookies
+        cookies = driver.get_cookies()
+        for cookie in cookies:
+            if any(keyword in cookie["name"].lower() for keyword in ["token", "auth", "api", "key"]):
+                tokens.append(
+                    Token(
+                        token=cookie["name"],
+                        value=cookie["value"],
+                        expires_at=str(cookie.get("expiry", "unknown")),
+                        selector="cookie",
+                        token_type="cookie",
+                    )
+                )
+        return tokens
+
+    def _analyze_page(
+        self, url: str, driver, all_page_analyses: list[PageAnalysis], specific_instructions: str | None = None
+    ) -> PageAnalysis | None:
         if self.base_url is None:
             self.base_url = self._get_core_base_url(url)
         url = url.strip()
         if url.startswith("/"):
             url = urljoin(self.base_url, url)
+
+        # Validate URL
+        parsed_url = urlparse(url)
+        if not parsed_url.scheme or not parsed_url.netloc:
+            logger.error(f"Invalid URL: {url}")
+            return None
+
         logger.info(f"Starting analysis of {url}")
 
         logger.debug(f"Loading page {url}")
-        driver.get(url)
+        try:
+            driver.get(url)
+        except Exception as e:
+            logger.error(f"Failed to load URL {url}: {e}")
+            return None
+
         # Wait for the page to load
         time.sleep(3)
+
         # Collect page information
         page_source = driver.page_source
         page_source, json_data = self.html_parser.parse(page_source)
         network_requests = self.driver.capture_network_requests(driver)
+        tokens = self._extract_tokens_from_driver(driver, page_source)
 
         # Use LLM to analyze the page
         logger.info("Analyzing page with LLM")
-        page_analysis = self._analyze_with_llm(page_source, json_data, network_requests, all_page_analyses)
+        page_analysis = self._analyze_with_llm(page_source, json_data, network_requests, all_page_analyses, tokens, specific_instructions)
         if not page_analysis:
             logger.error("Failed to analyze page structure")
-            raise ValueError("Page analysis failed")
+            return None
 
         page_analysis.url = url
         page_analysis.title = driver.title
@@ -75,7 +109,13 @@ class NavigatorAgent:
         return page_analysis
 
     def _analyze_with_llm(
-        self, page_source: str, json_data: list[dict[str, str]], network_requests: list[dict], all_page_analyses: list[PageAnalysis]
+        self,
+        page_source: str,
+        json_data: list[dict[str, str]],
+        network_requests: list[dict],
+        all_page_analyses: list[PageAnalysis],
+        tokens: list[Token],
+        specific_instructions: str | None = None,
     ) -> PageAnalysis | None:
         """Use LLM to analyze the page content and structure.
 
@@ -87,7 +127,6 @@ class NavigatorAgent:
             WebsiteAnalysis containing the analysis results, or None if analysis fails
         """
         logger.info("Analyzing page with LLM")
-        # Get model configuration
 
         # Render context from template
         template = self.template_env.get_template("navigator_context.jinja2")
@@ -96,6 +135,8 @@ class NavigatorAgent:
             page_source=page_source,
             network_requests=network_requests,
             json_data=json_data,
+            tokens=[token.model_dump() for token in tokens],
+            specific_instructions=specific_instructions,
         )
 
         # Log the context for debugging
@@ -123,12 +164,17 @@ class NavigatorAgent:
             for iter in range(MAX_DEPTH):
                 if len(urls) == 0:
                     break
-                for i, url in enumerate(urls):
+                for i, url in enumerate(copy(urls)):
                     if i > MAX_LINKS:
                         break
-                    page_analysis = self._analyze_page(url, driver, all_page_analyses)
-                    all_page_analyses.append(page_analysis)
-                    urls = page_analysis.links_to_follow
+                    try:
+                        page_analysis = self._analyze_page(url, driver, all_page_analyses)
+                        if page_analysis is not None:
+                            all_page_analyses.append(page_analysis)
+                            urls = page_analysis.links_to_follow
+                    except Exception as e:
+                        logger.warning(f"Error analyzing page {url}: {e!s}")
+                        continue
 
             # Synthesize website analysis
             analysis = self._synthesize_website_analysis(all_page_analyses)
@@ -164,3 +210,17 @@ class NavigatorAgent:
         logger.debug(synthesized_analysis.model_dump_json(indent=2))
 
         return synthesized_analysis
+
+    def analyze_specific_page(self, url: str, instructions: str) -> PageAnalysis | None:
+        """Analyze a specific page with given instructions."""
+        logger.info(f"Analyzing specific page: {url}")
+        logger.info(f"Instructions: {instructions}")
+
+        driver = self.driver.start()
+        try:
+            page_analysis = self._analyze_page(url, driver, [], specific_instructions=instructions)
+        finally:
+            self.driver.quit()
+            return None
+
+        return page_analysis
