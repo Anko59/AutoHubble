@@ -37,18 +37,17 @@ class ChromeDriver:
 
     def __init__(self):
         """Initialize the ChromeDriver with stealth settings."""
-        self.options = self.setup_chrome_options()
         self.driver = None
 
     def start(self):
         """Start the undetected ChromeDriver."""
         if self.driver is None or not self.driver.session_id:
-            self.driver = uc.Chrome(options=self.options)
+            self.driver = uc.Chrome(options=self.setup_chrome_options())
             self._inject_stealth_scripts()
         try:
             self.driver.current_url
         except Exception:
-            self.driver = uc.Chrome(options=self.options)
+            self.driver = uc.Chrome(options=self.setup_chrome_options())
             self._inject_stealth_scripts()
         return self.driver
 

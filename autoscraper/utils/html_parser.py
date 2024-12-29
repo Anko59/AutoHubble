@@ -4,6 +4,7 @@ import chompjs
 from bs4 import BeautifulSoup, Comment
 from loguru import logger
 
+
 base_relevant_tags = {
     "html",  # Root element
     "a",  # Links

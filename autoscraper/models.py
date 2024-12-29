@@ -1,4 +1,4 @@
-from typing import Literal, Union
+from typing import Literal
 
 import jsonref
 from pydantic import BaseModel, Field
@@ -66,15 +66,16 @@ class PaginationInfo(ExtendedBaseModel):
 class APIEndpoint(ExtendedBaseModel):
     url: str = Field(..., description="URL of the API endpoint")
     method: Literal["GET", "POST"] = Field(..., description="HTTP method for the API call")
-    params: dict[str, str] = Field(default_factory=dict, description="Query parameters for the API call")
-    headers: dict[str, str] = Field(default_factory=dict, description="Headers for the API call")
+    params: str = Field(default_factory=dict, description="Query parameters for the API call")
+    headers: str = Field(default_factory=dict, description="Headers for the API call")
 
 
 class Token(ExtendedBaseModel):
     token: str = Field(..., description="Token for authentication")
     expires_at: str = Field(..., description="Expiration time for the token")
     value: str = Field(..., description="Value of the token")
-    selecotr: str = Field(..., description="Selector for the token")
+    selector: str = Field(..., description="Selector or method to obtain the token")
+    token_type: str = Field(..., description="Type of token (e.g., 'localStorage', 'cookie', 'meta', 'script', 'data-attribute')")
 
 
 class PageAnalysis(ExtendedBaseModel):
@@ -100,9 +101,8 @@ class WebsiteAnalysis(ExtendedBaseModel):
         ..., description="Type of Scrapy spider to use"
     )
     start_urls: list[str] = Field(..., description="List of URLs to start scraping from")
-    custom_settings: dict[str, Union[str, int, bool, list, dict]] = Field(
-        default_factory=dict, description="Custom settings for the Scrapy spider"
-    )
+    custom_settings: str = Field(default_factory=dict, description="Custom settings for the Scrapy spider")
+    tokens: list[Token] = Field(default_factory=list, description="List of tokens necessary for writing the spider")
 
     extraction_strategy: Literal["html", "json", "api", "mixed"] = Field(..., description="Overall strategy for data extraction")
     main_data_elements: list[DataElement] = Field(..., description="Main data elements to be extracted across the website")
@@ -111,11 +111,11 @@ class WebsiteAnalysis(ExtendedBaseModel):
     api_endpoints: list[APIEndpoint] = Field(default_factory=list, description="List of important API endpoints for the website")
     javascript_handling: str = Field(..., description="Strategy for handling JavaScript-rendered content")
 
-    item_structure: dict[str, str] = Field(..., description="Structure of the Scrapy Item to be used")
+    item_structure: str = Field(..., description="Structure of the Scrapy Item to be used")
     pipeline_recommendations: list[str] = Field(..., description="Recommended Scrapy pipelines")
     middleware_recommendations: list[str] = Field(..., description="Recommended Scrapy middlewares")
 
-    crawl_rules: list[dict[str, Union[str, bool]]] = Field(default_factory=list, description="Crawl rules for CrawlSpider")
+    crawl_rules: str = Field(default_factory=list, description="Crawl rules for CrawlSpider")
     sitemap_urls: list[str] = Field(default_factory=list, description="Sitemap URLs for SitemapSpider")
 
     challenges: list[str] = Field(..., description="Potential challenges in scraping this website")
@@ -151,3 +151,14 @@ class ActionMemory(BaseModel):
 
     action: GeneratorAction = Field(description="The action that was taken")
     feedback: list[ActionExecutionFeedBack] = Field(description="Feedback son the execution of the action")
+
+
+class TestResult(ExtendedBaseModel):
+    """Result of spider test run with recommendations."""
+
+    success: bool = Field(description="Whether the test was successful")
+    items_scraped: int = Field(description="Number of items scraped")
+    recommendations: str = Field(description="Recommendations for improving the spider")
+    needs_more_info: bool = Field(description="Whether more information is needed")
+    url_to_analyze: str = Field(description="URL to analyze for more information")
+    analysis_instructions: str = Field(description="Instructions for analyzing the URL")

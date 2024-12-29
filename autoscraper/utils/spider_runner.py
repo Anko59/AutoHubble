@@ -39,7 +39,7 @@ class SpiderRunner:
             spider_name = spider_path.stem
 
             # Build the command
-            cmd = ["scrapy", "crawl", spider_name, "-o", str(output_dir / "output.json")]
+            cmd = ["scrapy", "crawl", spider_name]
 
             # Run the spider with optional timeout
             logger.info(f"Running spider: {' '.join(cmd)}")

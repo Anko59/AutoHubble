@@ -124,7 +124,7 @@ class OpenRouterClient:
                     return self._handle_structured_output(model, system_prompt, content_str, response_model)
                 else:
                     return self._handle_unstructured_output(model, system_prompt, content_str, response_model)
-            except (APIError, APITimeoutError, RateLimitError, TypeError, ValidationError) as e:
+            except (APIError, APITimeoutError, RateLimitError, TypeError, ValidationError, json.JSONDecodeError) as e:
                 retries += 1
                 if retries < model.retries:
                     logger.warning(f"API error: {str(e)}, retrying in {2 ** retries} seconds...")
@@ -154,19 +154,14 @@ class OpenRouterClient:
             )
             return completion.choices[0].message.parsed
         else:
+            system_prompt += f"\n\nRespond with a JSON object. Following this JSON schmea:\n{response_model.model_json_schema()}"
             completion = self.client.chat.completions.create(
                 model=model.name,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": content_str},
                 ],
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "strict": True,
-                        "schema": response_model.model_json_schema(),
-                    },
-                },
+                response_format={"type": "json_object"},
                 **({"extra_body": extra_body} if extra_body else {}),
             )
             parsed_content = chompjs.parse_js_object(completion.choices[0].message.content)

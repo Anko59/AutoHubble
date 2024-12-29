@@ -97,7 +97,7 @@ class SpiderFileManager:
             spider_file_path.rename(new_spider_file_path)
 
         spider_content = new_spider_file_path.read_text()
-        spider_content = spider_content.replace("BasespiderSpider", f"{spider_name.capitalize()}Spider")
+        spider_content = spider_content.replace("BaseSpider", f"{spider_name.capitalize()}Spider")
         spider_content = spider_content.replace('name = "base_spider"', f'name = "{spider_name}"')
         new_spider_file_path.write_text(spider_content)
 

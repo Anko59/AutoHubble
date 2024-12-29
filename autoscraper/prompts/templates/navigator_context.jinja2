@@ -4,6 +4,8 @@
     "page_source": "{{ page_source }}",
     "network_requests": {{ network_requests | tojson }},
     "json_data": {{ json_data | tojson }},
+    "tokens": {{ tokens | tojson }},
+    "specific_instructions" : "{{ specific_instructions }}",
     "instructions": [
         "Determine the best method for data extraction (HTML selectors, JSON parsing, API calls)",
         "Identify main content areas and their selectors",
@@ -13,6 +15,7 @@
         "Analyze API endpoints in network requests and their structure",
         "Determine if JavaScript is required and if content is dynamic",
         "Identify links to follow for further analysis if needed",
-        "Provide any additional remarks or challenges observed"
+        "Provide any additional remarks or challenges observed",
+        "Provide all tokens needed to access the API endpoints if applicable"
     ]
 }

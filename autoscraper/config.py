@@ -6,8 +6,8 @@ from enum import Enum
 # OpenRouter configuration
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_HEADERS = {
-    "HTTP-Referer": "https://github.com/yourusername/autoscraper",
-    "X-Title": "AutoScraper",
+    "HTTP-Referer": "https://github.com/Anko59/AutoHubble",
+    "X-Title": "AutoHubble",
 }
 
 
@@ -44,7 +44,7 @@ MODELS: dict[str, Model] = {
         name="anthropic/claude-3.5-sonnet:beta",
         context_length=200000,
         description="Claude 3.5 Sonnet",
-        structured_output=False,
+        structured_output=True,
         pydantic_output=False,
         providers=[Provider.ANTHROPIC],
     ),
@@ -112,16 +112,30 @@ MODELS: dict[str, Model] = {
         pydantic_output=True,
         providers=[Provider.GOOGLE, Provider.GOOGLE_AI_STUDIO],
     ),
+    "deepseek-v3": Model(
+        name="deepseek/deepseek-chat",
+        context_length=64000,
+        description="DeepSeek V3",
+        structured_output=True,
+        pydantic_output=False,
+    ),
+    "llama-3.3-70b": Model(
+        name="meta-llama/llama-3.3-70b-instruct",
+        context_length=131000,
+        description="Llama 3.3 70B",
+        structured_output=True,
+        pydantic_output=False,
+    ),
     # Add more models as needed
 }
 
 # Model choices with fallbacks
 MODEL_CHOICES: dict[str, list[str]] = {
-    "navigator": ["gemini-2-flash", "gpt-4o-mini", "gemini-flash-1-5"],
-    "generator": ["gpt-4o", "gemini-exp", "claude-3.5-sonnet"],
-    "debugger": ["gemini-2-flash-thinking", "o1-mini", "qwq"],
+    "navigator": ["gemini-2-flash", "gpt-4o-mini", "gemini-flash-1-5", "llama-3.3-70b"],
+    "generator": ["deepseek-v3", "gemini-exp", "claude-3.5-sonnet", "gpt-4o"],
+    "debugger": ["claude-3.5-sonnet", "gemini-2-flash-thinking", "qwq", "o1-mini"],
     "structurer": ["gemini-flash-1-5"],
-    "summarizer": ["o1-mini", "gpt-4o"],
+    "summarizer": ["gemini-2-flash-thinking", "gpt-4o", "o1-mini", "qwq"],
 }
 
 
@@ -156,3 +170,4 @@ SAVE_LOGS = True
 
 # Debbuger settings
 SPIDER_TIMEOUT = 120  # seconds
+MAX_DEBUGGER_LOOPS = 1  # Maximum number of debugger/navigator loops
